@@ -9,3 +9,4 @@ fastapi
 langserve
 sse_starlette
 uvicorn
+langgraph
