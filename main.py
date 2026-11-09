@@ -1,41 +1,30 @@
 from click import command
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langgraph.checkpoint.memory import InMemorySaver
 
 load_dotenv()
 
 model = ChatOpenAI(model="gpt-6-luna")
 
-store = {}
-
-def get_session_history(session_id:str) -> BaseChatMessageHistory:
-    if session_id not in store:
-        store[session_id] = InMemoryChatMessageHistory()
-    return store[session_id]
-
-prompt =  ChatPromptTemplate.from_messages(
-    [
-        ("system", "you are a helpful assistant. answer all question, if you can"),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
+agent = create_agent(
+    model=model,
+    tools=[],
+    system_prompt="you are a helpful assistant. answer all question, if you can",
+    checkpointer=InMemorySaver(),
 )
 
-chain = prompt | model
-config = {"configurable": {"session_id":"abc_123"}}
-with_message_history = RunnableWithMessageHistory(chain, get_session_history)
+thread_config = {"configurable": {"thread_id": "abc_123"}}
 
 
 
 if __name__ == '__main__':
-    user_input =  input(">")
-    response =  with_message_history.invoke(
-        [
-            HumanMessage(content=user_input),
-        ],
-        config=config
-    )
+    while True:
+        user_input =  input(">")
+        response = agent.invoke(
+            {"messages": [{"role": "user", "content": user_input}]},
+            thread_config,
+        )["messages"][-1].content
+        print(response)
 
